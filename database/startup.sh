@@ -142,6 +142,24 @@ export POSTGRES_DB="${DB_NAME}"
 export POSTGRES_PORT="${DB_PORT}"
 EOF
 
+# -----------------------------------------------------------------------------
+# Apply RideConnect schema + seed (idempotent)
+# -----------------------------------------------------------------------------
+INIT_SQL_FILE="$(dirname "$0")/rideconnect_init.sql"
+if [ -f "${INIT_SQL_FILE}" ]; then
+    echo ""
+    echo "Applying RideConnect schema/seed from: ${INIT_SQL_FILE}"
+    # Run as the app user against the target DB. This is safe to execute repeatedly.
+    PGPASSWORD="${DB_PASSWORD}" sudo -u postgres ${PG_BIN}/psql \
+        -h localhost -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME} \
+        -v ON_ERROR_STOP=1 \
+        -f "${INIT_SQL_FILE}"
+    echo "✓ RideConnect schema/seed applied"
+else
+    echo "⚠ RideConnect init SQL not found at ${INIT_SQL_FILE}; skipping schema/seed."
+fi
+
+echo ""
 echo "PostgreSQL setup complete!"
 echo "Database: ${DB_NAME}"
 echo "User: ${DB_USER}"
